@@ -1,0 +1,182 @@
+{% extends 'default_frame.twig' %}
+
+{% set body_class = 'mypage' %}
+
+{% set mypageno = 'point' %}
+
+{% block javascript %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    {% block chart %}{% endblock %}
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        datasets: [
+			{% for date in dateArr %}
+				{% set poi = 0 %}
+				{% for point in Ipoint %}
+				{% set pdate = point.create_date|date_format('','Y-m-d') %}
+					{% if pdate == date.date %}
+						{% set poi = point.point %}
+					{% else %}
+					{% endif %}
+				{% endfor %}
+				{{ poi }},
+			{% endfor %}
+
+        ],
+		labels: [
+			{% for date in dateArr %}
+				'{{ date.date }}',
+
+			{% endfor %}
+
+		],
+        graphs: [{
+                type: 'line',
+                name: '折れ線グラフ'
+            },
+            {
+                type: 'bar',
+                name: '棒グラフ'
+            },
+            {
+                type: 'radar',
+                name: 'レーダーチャート'
+            },
+            {
+                type: 'pie',
+                name: 'パイチャート'
+            },
+            {
+                type: 'polarArea',
+                name: 'ポーラチャート'
+            }
+        ],
+        graphSelected: 'bar'
+    },
+    watch: {
+        datasets: {
+            handler() {
+                this.canvas.data.datasets[0].data = this.datasets;
+//                this.canvas.data.labels = Array(this.datasets.length).fill('');
+                this.canvas.data.labels = Array(this.datasets.labels);
+                this.canvas.update();
+            }
+        },
+        graphSelected: {
+            handler() {
+                this.canvas.destroy();
+                this.chart();
+            }
+        }
+
+    },
+    mounted() {
+        this.chart();
+    },
+    methods: {
+        toRaw(data) {
+            return JSON.stringify(data);
+        },
+        add(i) {
+            this.datasets.splice(i, 0, this.datasets[i]);
+        },
+        del(i) {
+            if (this.datasets.length > 1) {
+                this.datasets.splice(i, 1);
+            }
+        },
+        chart() {
+            var vm = this;
+            var ctx = document.getElementById("charts");
+            vm.canvas = new Chart(ctx, {
+                type: vm.graphSelected,
+
+                data: {
+					labels: (vm.labels),
+                    datasets: [{
+                        label: 'ポイント獲得履歴{% if prevNom == 3 %}(30日以内に期限切れ){% endif %}',
+                        backgroundColor: '#20B2AA',
+                        data: vm.datasets
+                    }]
+                },
+				options: {
+                    scales: {
+                       yAxes: [{
+                                display: true,
+                                stacked: true,
+                                ticks: {
+                                    min: 0, // minimum value
+                                    max: 50 // maximum value
+                                },
+                       }]
+                    }
+               }
+
+
+
+			});
+        },
+        randData() {
+            var index = Math.floor(Math.random() * (10 - 2) + 2);
+            var i = 0;
+            var datasets = [];
+            while (index > i) {
+                datasets.push(Math.floor(Math.random() * (1000) - 500));
+                i++;
+            }
+            this.datasets = datasets;
+        }
+    }
+}) 
+</script>
+{% endblock javascript %}
+
+{% block main %}
+    <div class="ec-layoutRole__main">
+        <div class="ec-mypageRole">
+            <div class="ec-pageHeader">
+                <h1>{{ 'マイページ'|trans }}/{{ 'ポイント履歴'|trans }}</h1>
+            </div>
+            {% include 'Mypage/navi.twig' %}
+        </div>
+        <div class="ec-mypageRole">
+            <div class="ec-editRole">
+                <div class="ec-off1Grid">
+                    <div class="ec-off1Grid__cell">
+{% if prevNom >= 2 %}
+	<div>期限切れ間近なポイント合計{{Total}}pt</div>
+{% endif %}
+
+<canvas id="charts"></canvas>
+<div style="float: left;">
+{% if prevNom <= 2 %}
+	<form action="" method="POST">
+	<input type="hidden" name="prev" value="{{prevNom}}">
+{% if prevNom == 2 %}
+	<input type="submit" value="&lt;期限が30日位内のポイント">
+{% else %}
+	<input type="submit" value="&lt;前の30日">
+{% endif %}
+	</form>
+{% endif %}
+</div>
+<div style="float: right;">
+{% if prevNom > 1 %}
+	<form action="" method="POST">
+	<input type="hidden" name="prev" value="{{prevNom - 2}}">
+	<input type="submit" value="次の30日&gt;">
+	</form>
+{% endif %}
+</div>
+<canvas id="charts2"></canvas>
+
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
